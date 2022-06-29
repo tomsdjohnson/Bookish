@@ -1,4 +1,4 @@
-from kuppa.app import create_app
+from bookish.app import create_app
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())

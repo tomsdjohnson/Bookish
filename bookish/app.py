@@ -1,7 +1,7 @@
 import os
 from flask import Flask
-from kuppa.models import db, migrate
-from kuppa.controllers import register_controllers
+from bookish.models import db, migrate
+from bookish.controllers import register_controllers
 
 
 def create_app():

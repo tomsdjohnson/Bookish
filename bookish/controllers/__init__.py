@@ -1,4 +1,4 @@
-from kuppa.controllers.bookish import bookish_routes
+from bookish.controllers.bookish import bookish_routes
 
 
 def register_controllers(app):
