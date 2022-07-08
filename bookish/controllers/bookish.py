@@ -55,3 +55,45 @@ def bookish_routes(app):
 
             return {"message": "New user has been created successfully."}
 
+    @app.route('/SearchBookByTitle', methods=['GET'])
+    def handle_SearchBookByTitle():
+        if request.is_json:
+
+            data = request.get_json()
+            inputTitle = data['title']
+
+            books = BookModel.query.where(BookModel.title == inputTitle).all()
+            if not books:
+                return {"error": "No books with that title"}
+            results = [
+                {
+                    'ISBN': book.ISBN,
+                    'title': book.title,
+                    'author': book.author
+                } for book in books]
+            return {"Books": results}
+
+        else:
+            return {"error": "Wasn't a JSON"}
+
+    @app.route('/SearchBookByAuthor', methods=['GET'])
+    def handle_SearchBookByAuthor():
+        if request.is_json:
+
+            data = request.get_json()
+            inputAuthor = data['author']
+
+            books = BookModel.query.where(BookModel.author == inputAuthor).all()
+            if not books:
+                return {"error": "No books by that author"}
+            results = [
+                {
+                    'ISBN': book.ISBN,
+                    'title': book.title,
+                    'author': book.author
+                } for book in books]
+            return {"Books": results}
+
+        else:
+            return {"error": "Wasn't a JSON"}
+
