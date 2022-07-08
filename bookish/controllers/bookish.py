@@ -40,3 +40,18 @@ def bookish_routes(app):
                 'author': book.author
             } for book in books]
         return {"Books": results}
+
+    @app.route('/NewUser', methods=['POST'])
+    def handle_NewUser():
+        data = request.get_json()
+        inputUsername = data['username']
+
+        if inputUsername in [user.username for user in Users.query.all()]:
+            return {"message" : "Username already taken"}
+        else:
+            new_user = Users(username=inputUsername, password=data['password'])
+            db.session.add(new_user)
+            db.session.commit()
+
+            return {"message": "New user has been created successfully."}
+
