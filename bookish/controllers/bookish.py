@@ -169,6 +169,50 @@ def bookish_routes(app):
 
             return {"error": "User has not borrowed this book."}
 
+    @app.route('/AvailableBookCopies', methods=['GET'])
+    def handle_AvailableBookCopies():
+        if request.is_json:
+
+            data = request.get_json()
+            ISBN = data['ISBN']
+
+            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+
+            if not books:
+                return {"error": "Library does not have this book."}
+
+            counter = 0
+            borrowedBooks = []
+
+            book_ids = [book.BookID for book in books]
+
+            for book_id in book_ids:
+                book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
+                if book:
+                    counter += 1
+                    borrowedBooks.append(book[0])
+
+            if len(borrowedBooks) == 0:
+                return {"message": "There are {} copies of the book and they're all available".format(len(books))}
+            else:
+                availableBooks = len(books) - counter
+                BorrowedBooksDetails = []
+
+                # BorrowedBooksDetails = BorrowedBooks.query.where()order_by(BookModel.title).all()
+
+                for book in borrowedBooks:
+                    user = Users.query.where(Users.UserID == book.UserID).all()
+
+                    BorrowedBooksDetails.append(
+                        {
+                            'username': user[0].username,
+                            'Due Date': book.DueDate
+                        })
+
+                output_dict = {"Book Copies" : len(books), "Available Copies" : availableBooks, "Borrowed Book Details" : BorrowedBooksDetails}
+                return output_dict
+
+
 
 
 
