@@ -97,3 +97,79 @@ def bookish_routes(app):
         else:
             return {"error": "Wasn't a JSON"}
 
+    @app.route('/BorrowBook', methods=['POST'])
+    def handle_BorrowBook():
+        if request.is_json:
+
+            data = request.get_json()
+            #(ISBN=data['ISBN'], username=data['username'], DueDate=data['DueDate'])
+            ISBN = data['ISBN']
+            username = data['username']
+            DueDate = data['DueDate']
+
+            user = Users.query.where(Users.username == username).all()
+            if not user:
+                return {"error": "No user by that username"}
+
+            UserID = user[0].UserID
+
+            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+
+            if not books:
+                return {"error": "Library does not have this book."}
+
+            book_ids = [book.BookID for book in books]
+
+            for book_id in book_ids:
+                book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(BorrowedBooks.UserID == UserID).all()
+                if book:
+                    return {"error": "User has already borrowed this book."}
+
+
+            for book_id in book_ids:
+                book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
+                if not book:
+                    new_borrowed_book = BorrowedBooks(BookID=book_id, UserID=UserID, DueDate = DueDate)
+                    db.session.add(new_borrowed_book)
+                    db.session.commit()
+                    return {"message": "Book successfully borrowed."}
+
+            return {"error": "All books are borrowed."}
+
+    @app.route('/ReturnBook', methods=['POST'])
+    def handle_ReturnBook():
+        if request.is_json:
+
+            data = request.get_json()
+            # (ISBN=data['ISBN'], username=data['username'], DueDate=data['DueDate'])
+            ISBN = data['ISBN']
+            username = data['username']
+
+            user = Users.query.where(Users.username == username).all()
+            if not user:
+                return {"error": "No user by that username"}
+
+            UserID = user[0].UserID
+
+            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+
+            if not books:
+                return {"error": "Library does not have this book."}
+
+            book_ids = [book.BookID for book in books]
+
+            for book_id in book_ids:
+                book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(
+                    BorrowedBooks.UserID == UserID).all()
+                if book:
+                    d = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(
+                     BorrowedBooks.UserID == UserID).delete()
+                    db.session.commit()
+                    return {"message": "Book successfully returned."}
+
+            return {"error": "User has not borrowed this book."}
+
+
+
+
+
