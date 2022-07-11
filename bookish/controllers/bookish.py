@@ -212,8 +212,35 @@ def bookish_routes(app):
                 output_dict = {"Book Copies" : len(books), "Available Copies" : availableBooks, "Borrowed Book Details" : BorrowedBooksDetails}
                 return output_dict
 
+    @app.route('/BooksBorrowedByUser', methods=['GET'])
+    def handle_BooksBorrowedByUser():
+        if request.is_json:
 
+            data = request.get_json()
+            username = data['username']
 
+            usernames = Users.query.where(Users.username == username).all()
 
+            if not usernames:
+                return {"error": "User does not exist."}
 
+            UserID = usernames[0].UserID
+            BorrowedBooksByUserDetails = []
 
+            borrowed_books = BorrowedBooks.query.where(BorrowedBooks.UserID == UserID).all()
+
+            for borrowed_book in borrowed_books:
+                BookID = borrowed_book.BookID
+                ISBN = BookCopies.query.where(BookCopies.BookID == BookID).all()[0].ISBN
+                title = BookModel.query.where(BookModel.ISBN == ISBN).all()[0].title
+
+                BorrowedBooksByUserDetails.append(
+                    {
+                        'title': title,
+                        'Due Date': borrowed_book.DueDate
+                    })
+
+            if not borrowed_books:
+                return {"message": "User has not borrowed any books."}
+            else:
+                return {"Borrowed Books": BorrowedBooksByUserDetails}
