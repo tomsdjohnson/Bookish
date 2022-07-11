@@ -13,12 +13,21 @@ def bookish_routes(app):
         if request.is_json:
 
             data = request.get_json()
-            new_book_model = BookModel(ISBN=data['ISBN'], title=data['title'], author=data['author'])
+            input_ISBN = data['ISBN']
+            input_title = data['title']
+            input_author = data['author']
+
+            #Check book doesn't already exist
+            books_with_ISBN = BookModel.query.where(BookModel.ISBN == input_ISBN).all()
+            if books_with_ISBN:
+                return {"error": "Book with ISBN {} is already in the database.".format(input_ISBN)}
+
+            new_book_model = BookModel(ISBN=input_ISBN, title=input_title, author=input_author)
             db.session.add(new_book_model)
 
             # Add new copies
             for _ in range(data['copies']):
-                new_book_copy = BookCopies(ISBN=data['ISBN'])
+                new_book_copy = BookCopies(ISBN=input_ISBN)
                 db.session.add(new_book_copy)
 
             db.session.commit()
@@ -190,42 +199,40 @@ def bookish_routes(app):
         if request.is_json:
 
             data = request.get_json()
-            ISBN = data['ISBN']
+            inputISBN = data['ISBN']
 
-            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+            copies_with_ISBN = BookCopies.query.where(BookCopies.ISBN == inputISBN).all()
 
-            if not books:
+            if not copies_with_ISBN:
                 return {"error": "Library does not have this book."}
 
-            counter = 0
-            borrowedBooks = []
+            borrowed_copies_counter = 0
+            borrowed_copies = []
 
-            book_ids = [book.BookID for book in books]
+            book_ids = [book.BookID for book in copies_with_ISBN]
 
             for book_id in book_ids:
                 book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
                 if book:
-                    counter += 1
-                    borrowedBooks.append(book[0])
+                    borrowed_copies_counter += 1
+                    borrowed_copies.append(book[0])
 
-            if len(borrowedBooks) == 0:
-                return {"message": "There are {} copies of the book and they're all available".format(len(books))}
+            if len(borrowed_copies) == 0:
+                return {"message": "There are {} copies of the book and they're all available".format(len(copies_with_ISBN))}
             else:
-                availableBooks = len(books) - counter
+                availableCopies = len(copies_with_ISBN) - borrowed_copies_counter
                 BorrowedBooksDetails = []
 
-                # BorrowedBooksDetails = BorrowedBooks.query.where()order_by(BookModel.title).all()
-
-                for book in borrowedBooks:
-                    user = Users.query.where(Users.UserID == book.UserID).all()
+                for copy in borrowed_copies:
+                    user = Users.query.where(Users.UserID == copy.UserID).all()
 
                     BorrowedBooksDetails.append(
                         {
                             'username': user[0].username,
-                            'Due Date': book.DueDate
+                            'Due Date': copy.DueDate
                         })
 
-                output_dict = {"Book Copies" : len(books), "Available Copies" : availableBooks, "Borrowed Book Details" : BorrowedBooksDetails}
+                output_dict = {"Book Copies": len(copies_with_ISBN), "Available Copies": availableCopies, "Borrowed Book Details": BorrowedBooksDetails}
                 return output_dict
         else:
             return {"error": "The request payload is not in JSON format"}
@@ -235,14 +242,16 @@ def bookish_routes(app):
         if request.is_json:
 
             data = request.get_json()
-            username = data['username']
+            inputUsername = data['username']
 
-            usernames = Users.query.where(Users.username == username).all()
+            users_with_username = Users.query.where(Users.username == inputUsername).all()
 
-            if not usernames:
+            if not users_with_username:
                 return {"error": "User does not exist."}
+            if len(users_with_username) > 1:
+                return {"error": "Multiple users by that username"}
 
-            UserID = usernames[0].UserID
+            UserID = users_with_username[0].UserID
             BorrowedBooksByUserDetails = []
 
             borrowed_books = BorrowedBooks.query.where(BorrowedBooks.UserID == UserID).all()
@@ -270,70 +279,84 @@ def bookish_routes(app):
         if request.is_json:
 
             data = request.get_json()
+            input_ISBN = data['ISBN']
             output_messages = []
-            counter = 0
 
-            book = BookModel.query.where(BookModel.ISBN == data['ISBN']).all()
-            if not book:
+            books_with_ISBN = BookModel.query.where(BookModel.ISBN == input_ISBN).all()
+            if not books_with_ISBN:
                 return {"error": "Book does not exist."}
 
-            book = book[0]
+            book_with_ISBN = books_with_ISBN[0]
+            
             if 'title' in data:
-                book.title = data['title']
+                book_with_ISBN.title = data['title']
+                db.session.commit()
                 output_messages.append({"message": "Title successfully changed."})
+                
             if 'author' in data:
-                book.author = data['author']
+                book_with_ISBN.author = data['author']
+                db.session.commit()
                 output_messages.append({"message": "Author successfully changed."})
+                
             if 'copies' in data:
+                input_copies = data['copies']
+                
+                if input_copies < 0:
+                    output_messages.append({"error": "Not a valid number of copies"})
+                    return {"output messages": output_messages}
 
-                if data['copies'] < 0:
-                    return {"error": "Not a valid number of copies"}
-
-
-                books = BookCopies.query.where(BookCopies.ISBN == data['ISBN']).all()
-                book_ids = [book.BookID for book in books]
+                copies_with_ISBN = BookCopies.query.where(BookCopies.ISBN == input_ISBN).all()
+                book_ids = [book.BookID for book in copies_with_ISBN]
+                
                 current_copies = len(book_ids)
-                borrowed_book_ids = []
-
-                if data['copies'] == current_copies:
+               
+                if input_copies == current_copies:
                     output_messages.append({"message": "Already have that number of copies."})
                     return {"output messages" : output_messages}
 
+                borrowed_book_ids = []
+                borrowed_copies_counter_ = 0
+                
+                #Count borrowed copies and append them
                 for book_id in book_ids:
                     borrowed_books = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
-
                     if borrowed_books:
-                        counter += 1
+                        borrowed_copies_counter_ += 1
                         borrowed_book_ids.append(book_id)
-
-                if data['copies'] < (current_copies - counter):
+                
+                #Trying to remove more copies than are not borrowed
+                if input_copies < (current_copies - borrowed_copies_counter_):
                     output_messages.append({"error": "Can't remove a borrowed book."})
                     return {"output messages": output_messages}
 
-                if data['copies'] > current_copies:
-                    for x in range(data['copies'] - current_copies):
-                        new_book_copy = BookCopies(ISBN=data['ISBN'])
+                #Trying to add more copies than currently
+                if input_copies > current_copies:
+                    for _ in range(input_copies - current_copies):
+                        new_book_copy = BookCopies(ISBN=input_ISBN)
                         db.session.add(new_book_copy)
-                    output_messages.append({"message": "{} copies added".format(data['copies'] - current_copies)})
+                    db.session.commit()
+                    output_messages.append({"message": "{} copies added".format(input_copies - current_copies)})
 
-                if data['copies'] < current_copies:
+                # Trying to remove unborrowed copies
+                if input_copies < current_copies:
                     book_ids_set = set(book_ids)
                     borrowed_book_ids_set = set(borrowed_book_ids)
 
+                    #Get IDs of unborrowed copies
                     unborrowed_book_ids = list(book_ids_set.difference(borrowed_book_ids_set))
 
-                    for unborrowed_book_id in unborrowed_book_ids[:(current_copies - data['copies'])]:
-                        d = BookCopies.query.where(BookCopies.BookID == unborrowed_book_id).delete()
-                    output_messages.append({"message": "{} copies removed".format(current_copies - data['copies'])})
+                    for unborrowed_book_id in unborrowed_book_ids[:(current_copies - input_copies)]:
+                        BookCopies.query.where(BookCopies.BookID == unborrowed_book_id).delete()
+                        db.session.commit()
+                    output_messages.append({"message": "{} copies removed".format(current_copies - input_copies)})
 
-                if data['copies'] == 0:
-                    d = BookModel.query.where(BookModel.ISBN == data['ISBN']).delete()
+                #If all copies are removed, remove also the BookModel
+                if input_copies == 0:
+                    BookModel.query.where(BookModel.ISBN == input_ISBN).delete()
+                    db.session.commit()
                     output_messages.append({"message": "Book deleted."})
 
-            db.session.commit()
-
             return {"output messages": output_messages}
-
         else:
             return {"error": "The request payload is not in JSON format"}
 
@@ -344,13 +367,22 @@ def bookish_routes(app):
 
         file = request.files['file']
 
-        with open("file.csv", "r") as book_file:
+        with open(file.filename, "r") as book_file:
+
+            output_message = []
 
             for book_input in book_file.readlines()[1:]:
                 book_data = book_input.split(",")[0:3]
+
+                books_with_ISBN = BookModel.query.where(BookModel.ISBN == book_data[0]).all()
+                if books_with_ISBN:
+                    output_message.append({"error": "Book with ISBN {} is already in the database.".format(book_data[0])})
+                    continue
+
                 new_book_model = BookModel(ISBN=book_data[0], title=book_data[1], author=book_data[2])
 
-                for x in range(random.randint(1, 8)):
+                #Add a random amount of copies to populate the database
+                for _ in range(random.randint(1, 8)):
                     new_book_copy = BookCopies(ISBN=book_data[0])
                     db.session.add(new_book_copy)
 
@@ -358,6 +390,10 @@ def bookish_routes(app):
 
                 db.session.commit()
 
-        return {"message": "successfully added books from csv"}
+        if output_message:
+            return {"message": "Added books from csv but some entries were already in the database.",
+                    "errors": output_message}
+        else:
+            return {"message": "successfully added books from csv"}
 
 
