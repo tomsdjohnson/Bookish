@@ -1,46 +1,35 @@
-import React, { Component } from "react";
-import { Route } from "react-router";
+import React, { useState } from "react";
 import { Container } from "reactstrap";
-import { HomePage } from "./homePage/HomePage";
+import { HomePage } from "./HomePage/HomePage";
 import { ApiService } from "./ApiService";
 
-export default class App extends Component {
-  constructor() {
-    super();
+export default function App() {
+  const apiService = new ApiService()
+  const [state, setState] = useState(BLANK_STATE);
 
-    this.apiService = new ApiService();
-    this.state = BLANK_STATE;
-  }
-
-  example = () => {
-    this.apiService.example().then((example) => {
-      this.initialize(example);
+  let healthCheck = () => {
+    apiService.healthCheck().then((status) => {
+      initialize(status);
     });
   };
 
-  initialize = (example) => {
-    this.setState({ example });
+  let initialize = (status) => {
+    setState(status);
   };
 
-  render() {
-    this.example();
-
-    return (
-      <div>
-        <Container>
-          <Route exact path="/">
-            <HomePage example={this.state.example} />
-          </Route>
-        </Container>
-      </div>
-    );
+  if (state === BLANK_STATE) {
+    healthCheck()
   }
+
+  return (
+    <div>
+      <Container>
+          <HomePage okStatus={state.status}/>
+      </Container>
+    </div>
+  );
 }
 
 const BLANK_STATE = {
-  example: {
-    id: null,
-    data1: null,
-    data2: null
-  },
+  status: ""
 };
