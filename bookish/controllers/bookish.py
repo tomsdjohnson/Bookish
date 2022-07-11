@@ -1,7 +1,7 @@
 from flask import request
 from bookish.models.example import BookModel, BookCopies, BorrowedBooks, Users
 from bookish.models import db
-
+import random
 
 def bookish_routes(app):
     @app.route('/healthcheck')
@@ -14,8 +14,6 @@ def bookish_routes(app):
 
             data = request.get_json()
             new_book_model = BookModel(ISBN=data['ISBN'], title=data['title'], author=data['author'])
-
-            print(BookCopies.query.all())
 
             for x in range(data['copies']):
                 new_book_copy = BookCopies(ISBN=data['ISBN'])
@@ -313,3 +311,28 @@ def bookish_routes(app):
             db.session.commit()
 
             return {"output messages": output_messages}
+
+    @app.route('/AddBooksCsv', methods=['POST'])
+    def handle_AddBooksCsv():
+        if 'file' not in request.files:
+            return {"error": "csv file not included"}
+
+        file = request.files['file']
+
+        with open("file.csv", "r") as book_file:
+
+            for book_input in book_file.readlines()[1:]:
+                book_data = book_input.split(",")[0:3]
+                new_book_model = BookModel(ISBN=book_data[0], title=book_data[1], author=book_data[2])
+
+                for x in range(random.randint(1, 8)):
+                    new_book_copy = BookCopies(ISBN=book_data[0])
+                    db.session.add(new_book_copy)
+
+                db.session.add(new_book_model)
+
+                db.session.commit()
+
+        return {"message": "successfully added books from csv"}
+
+
