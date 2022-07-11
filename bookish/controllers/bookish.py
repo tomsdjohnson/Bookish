@@ -14,44 +14,48 @@ def bookish_routes(app):
 
             data = request.get_json()
             new_book_model = BookModel(ISBN=data['ISBN'], title=data['title'], author=data['author'])
+            db.session.add(new_book_model)
 
-            for x in range(data['copies']):
+            # Add new copies
+            for _ in range(data['copies']):
                 new_book_copy = BookCopies(ISBN=data['ISBN'])
                 db.session.add(new_book_copy)
 
-            print(BookCopies.query.all())
-
-            db.session.add(new_book_model)
-
             db.session.commit()
-            return {"message": "New example has been created successfully."}
+
+            return {"message": "New book has been created successfully."}
         else:
             return {"error": "The request payload is not in JSON format"}
 
     @app.route('/GetBooks', methods=['GET'])
     def handle_GetBooks():
         books = BookModel.query.order_by(BookModel.title).all()
-        results = [
+        output = [
             {
                 'ISBN': book.ISBN,
                 'title': book.title,
                 'author': book.author
             } for book in books]
-        return {"Books": results}
+        return {"Books": output}
 
     @app.route('/NewUser', methods=['POST'])
     def handle_NewUser():
-        data = request.get_json()
-        inputUsername = data['username']
+        if request.is_json:
 
-        if inputUsername in [user.username for user in Users.query.all()]:
-            return {"message" : "Username already taken"}
+            data = request.get_json()
+            inputUsername = data['username']
+
+            if inputUsername in [user.username for user in Users.query.all()]:
+                return {"message": "Username already taken"}
+            else:
+                new_user = Users(username=inputUsername, password=data['password'])
+                db.session.add(new_user)
+                db.session.commit()
+
+                return {"message": "New user has been created successfully."}
+
         else:
-            new_user = Users(username=inputUsername, password=data['password'])
-            db.session.add(new_user)
-            db.session.commit()
-
-            return {"message": "New user has been created successfully."}
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/SearchBookByTitle', methods=['GET'])
     def handle_SearchBookByTitle():
@@ -60,19 +64,19 @@ def bookish_routes(app):
             data = request.get_json()
             inputTitle = data['title']
 
-            books = BookModel.query.where(BookModel.title == inputTitle).all()
-            if not books:
+            books_with_title = BookModel.query.where(BookModel.title == inputTitle).all()
+            if not books_with_title:
                 return {"error": "No books with that title"}
-            results = [
+            output = [
                 {
                     'ISBN': book.ISBN,
                     'title': book.title,
                     'author': book.author
-                } for book in books]
-            return {"Books": results}
+                } for book in books_with_title]
+            return {"Books": output}
 
         else:
-            return {"error": "Wasn't a JSON"}
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/SearchBookByAuthor', methods=['GET'])
     def handle_SearchBookByAuthor():
@@ -81,91 +85,105 @@ def bookish_routes(app):
             data = request.get_json()
             inputAuthor = data['author']
 
-            books = BookModel.query.where(BookModel.author == inputAuthor).all()
-            if not books:
+            books_with_author = BookModel.query.where(BookModel.author == inputAuthor).all()
+            if not books_with_author:
                 return {"error": "No books by that author"}
-            results = [
+            output = [
                 {
                     'ISBN': book.ISBN,
                     'title': book.title,
                     'author': book.author
-                } for book in books]
-            return {"Books": results}
+                } for book in books_with_author]
+            return {"Books": output}
 
         else:
-            return {"error": "Wasn't a JSON"}
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/BorrowBook', methods=['POST'])
     def handle_BorrowBook():
         if request.is_json:
 
             data = request.get_json()
-            #(ISBN=data['ISBN'], username=data['username'], DueDate=data['DueDate'])
-            ISBN = data['ISBN']
-            username = data['username']
-            DueDate = data['DueDate']
+            inputISBN = data['ISBN']
+            inputUsername = data['username']
+            inputDueDate = data['DueDate']
 
-            user = Users.query.where(Users.username == username).all()
-            if not user:
+            users_with_username = Users.query.where(Users.username == inputUsername).all()
+            if not users_with_username:
                 return {"error": "No user by that username"}
 
-            UserID = user[0].UserID
+            if len(users_with_username) > 1:
+                return {"error": "Multiple users by that username"}
 
-            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+            UserID = users_with_username[0].UserID
 
-            if not books:
+            bookCopies_with_ISBN = BookCopies.query.where(BookCopies.ISBN == inputISBN).all()
+
+            if not bookCopies_with_ISBN:
                 return {"error": "Library does not have this book."}
 
-            book_ids = [book.BookID for book in books]
+            book_ids_with_ISBN = [book.BookID for book in bookCopies_with_ISBN]
 
-            for book_id in book_ids:
+            # Check if user already has borrowed this book
+            for book_id in book_ids_with_ISBN:
                 book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(BorrowedBooks.UserID == UserID).all()
                 if book:
                     return {"error": "User has already borrowed this book."}
 
-
-            for book_id in book_ids:
+            #Check if any book copy is available and borrow it
+            for book_id in book_ids_with_ISBN:
                 book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
                 if not book:
-                    new_borrowed_book = BorrowedBooks(BookID=book_id, UserID=UserID, DueDate = DueDate)
+                    new_borrowed_book = BorrowedBooks(BookID=book_id, UserID=UserID, DueDate = inputDueDate)
                     db.session.add(new_borrowed_book)
                     db.session.commit()
                     return {"message": "Book successfully borrowed."}
-
             return {"error": "All books are borrowed."}
+
+        else:
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/ReturnBook', methods=['POST'])
     def handle_ReturnBook():
         if request.is_json:
 
             data = request.get_json()
-            # (ISBN=data['ISBN'], username=data['username'], DueDate=data['DueDate'])
-            ISBN = data['ISBN']
-            username = data['username']
+            inputISBN = data['ISBN']
+            inputUsername = data['username']
 
-            user = Users.query.where(Users.username == username).all()
-            if not user:
+
+            users_with_username = Users.query.where(Users.username == inputUsername).all()
+            if not users_with_username:
                 return {"error": "No user by that username"}
 
-            UserID = user[0].UserID
+            if len(users_with_username) > 1:
+                return {"error": "Multiple users by that username"}
 
-            books = BookCopies.query.where(BookCopies.ISBN == ISBN).all()
+            #Get UserID
+            UserID = users_with_username[0].UserID
 
-            if not books:
+            books_with_ISBN = BookCopies.query.where(BookCopies.ISBN == inputISBN).all()
+
+            if not books_with_ISBN:
                 return {"error": "Library does not have this book."}
 
-            book_ids = [book.BookID for book in books]
+            book_ids = [book.BookID for book in books_with_ISBN]
 
+            #Search for BookID borrowed by user and return it
             for book_id in book_ids:
                 book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(
                     BorrowedBooks.UserID == UserID).all()
                 if book:
+                    #Delete BorrowedBooks entry
                     d = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).where(
                      BorrowedBooks.UserID == UserID).delete()
                     db.session.commit()
                     return {"message": "Book successfully returned."}
 
             return {"error": "User has not borrowed this book."}
+
+        else:
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/AvailableBookCopies', methods=['GET'])
     def handle_AvailableBookCopies():
@@ -209,6 +227,8 @@ def bookish_routes(app):
 
                 output_dict = {"Book Copies" : len(books), "Available Copies" : availableBooks, "Borrowed Book Details" : BorrowedBooksDetails}
                 return output_dict
+        else:
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/BooksBorrowedByUser', methods=['GET'])
     def handle_BooksBorrowedByUser():
@@ -242,6 +262,8 @@ def bookish_routes(app):
                 return {"message": "User has not borrowed any books."}
             else:
                 return {"Borrowed Books": BorrowedBooksByUserDetails}
+        else:
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/EditBook', methods=['POST'])
     def handle_EditBook():
@@ -311,6 +333,9 @@ def bookish_routes(app):
             db.session.commit()
 
             return {"output messages": output_messages}
+
+        else:
+            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/AddBooksCsv', methods=['POST'])
     def handle_AddBooksCsv():
