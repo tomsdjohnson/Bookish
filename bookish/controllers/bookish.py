@@ -244,3 +244,72 @@ def bookish_routes(app):
                 return {"message": "User has not borrowed any books."}
             else:
                 return {"Borrowed Books": BorrowedBooksByUserDetails}
+
+    @app.route('/EditBook', methods=['POST'])
+    def handle_EditBook():
+        if request.is_json:
+
+            data = request.get_json()
+            output_messages = []
+            counter = 0
+
+            book = BookModel.query.where(BookModel.ISBN == data['ISBN']).all()
+            if not book:
+                return {"error": "Book does not exist."}
+
+            book = book[0]
+            if 'title' in data:
+                book.title = data['title']
+                output_messages.append({"message": "Title successfully changed."})
+            if 'author' in data:
+                book.author = data['author']
+                output_messages.append({"message": "Author successfully changed."})
+            if 'copies' in data:
+
+                if data['copies'] < 0:
+                    return {"error": "Not a valid number of copies"}
+
+
+                books = BookCopies.query.where(BookCopies.ISBN == data['ISBN']).all()
+                book_ids = [book.BookID for book in books]
+                current_copies = len(book_ids)
+                borrowed_book_ids = []
+
+                if data['copies'] == current_copies:
+                    output_messages.append({"message": "Already have that number of copies."})
+                    return {"output messages" : output_messages}
+
+                for book_id in book_ids:
+                    borrowed_books = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
+
+                    if borrowed_books:
+                        counter += 1
+                        borrowed_book_ids.append(book_id)
+
+                if data['copies'] < (current_copies - counter):
+                    output_messages.append({"error": "Can't remove a borrowed book."})
+                    return {"output messages": output_messages}
+
+                if data['copies'] > current_copies:
+                    for x in range(data['copies'] - current_copies):
+                        new_book_copy = BookCopies(ISBN=data['ISBN'])
+                        db.session.add(new_book_copy)
+                    output_messages.append({"message": "{} copies added".format(data['copies'] - current_copies)})
+
+                if data['copies'] < current_copies:
+                    book_ids_set = set(book_ids)
+                    borrowed_book_ids_set = set(borrowed_book_ids)
+
+                    unborrowed_book_ids = list(book_ids_set.difference(borrowed_book_ids_set))
+
+                    for unborrowed_book_id in unborrowed_book_ids[:(current_copies - data['copies'])]:
+                        d = BookCopies.query.where(BookCopies.BookID == unborrowed_book_id).delete()
+                    output_messages.append({"message": "{} copies removed".format(current_copies - data['copies'])})
+
+                if data['copies'] == 0:
+                    d = BookModel.query.where(BookModel.ISBN == data['ISBN']).delete()
+                    output_messages.append({"message": "Book deleted."})
+
+            db.session.commit()
+
+            return {"output messages": output_messages}
