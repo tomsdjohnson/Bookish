@@ -11,6 +11,10 @@ export default function SearchBooksTab(){
     const [booksEmpty, setBooksEmpty] = useState(true);
     const [booksRetrieved, setBooksRetrieved] = useState(false);
 
+    useEffect( () => {
+        getBooksByTitle("")
+    }, [])
+
     const getBooksByTitle = (inputTitle) => {
         //alert("hello")
         APIService.DynamicSearchBookByTitle(inputTitle).then((outputBooks) => {
@@ -24,22 +28,47 @@ export default function SearchBooksTab(){
         })
     };
 
+    const getBooksByAuthor = (inputAuthor) => {
+        //alert("hello")
+        APIService.DynamicSearchBookByAuthor(inputAuthor).then((outputBooks) => {
+            if ('error' in outputBooks) {
+                setBooks([])
+                setBooksEmpty(true)
+            }else{
+                setBooks(outputBooks["Books"])
+                setBooksEmpty(false)
+            }
+        })
+    };
+
     let formatBooks = (books) => {
-          return books.map(book => <li>{book.title}</li>)
+          return books.map(book => <tr><td width="550">{book.title}</td> <td width="550">{book.author}</td> <td width="550">{book.ISBN}</td></tr>)
     }
 
     let handleTitleChange = (event) => {
+        setAuthor("")
         setTitle(event.target.value)
         getBooksByTitle(event.target.value)
     }
 
     let handleAuthorChange = (event) => {
+        setTitle("")
         setAuthor(event.target.value)
+        getBooksByAuthor(event.target.value)
     }
 
     let printBooks = () => {
         if(!booksEmpty){
-            return formatBooks(books)
+            return (<table>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>ISBN</th>
+                        </tr>
+                        {formatBooks(books)}
+                    </table>
+            )
+
         }else{
             return (<text>No books found.</text>)
         }
@@ -47,12 +76,15 @@ export default function SearchBooksTab(){
 
     return (
         <div>
-            <form onSubmit={(event) => getBooksByTitle(event)}>
+            <form>
                 <label>Title:{"    "}
                     <input type="text" value={title} onChange={(event) => handleTitleChange(event)} />
                 </label>
-                <input type="button" value="Search by title" />
+                <label>   Author:{"    "}
+                    <input type="text" value={author} onChange={(event) => handleAuthorChange(event)} />
+                </label>
             </form>
+
             {printBooks()}
         </div>
 

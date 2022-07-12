@@ -30,7 +30,7 @@ export class ApiService {
 
     DynamicSearchBookByTitle(title) {
         return new Promise((resolve) =>
-            fetch("/DynamicSearchBookByTitle", {
+            fetch("/DynamicSearchBook", {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -43,6 +43,42 @@ export class ApiService {
                 .catch((error) => console.error(error))
         );
     }
+
+    DynamicSearchBookByAuthor(author) {
+        return new Promise((resolve) =>
+            fetch("/DynamicSearchBook", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "author": author
+                },
+
+            })
+                .then((response) => resolve(response.json()))
+                .catch((error) => console.error(error))
+        );
+    }
+
+    AddBook(title, author, ISBN, copies) {
+    return new Promise((resolve) =>
+      fetch("/AddBook", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({
+            "title": title,
+            "author": author,
+            "ISBN": parseInt(ISBN),
+            "copies": parseInt(copies)
+        }),
+      })
+        .then((response) => resolve(response.json()))
+        .catch((error) => console.error(error))
+    );
+  }
 }
 
 const checkResponse = (response) => {

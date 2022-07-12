@@ -66,6 +66,7 @@ def bookish_routes(app):
         else:
             return {"error": "The request payload is not in JSON format"}
 
+    # Search Book where input is title
     @app.route('/SearchBookByTitle', methods=['GET'])
     def handle_SearchBookByTitle():
 
@@ -83,26 +84,7 @@ def bookish_routes(app):
             } for book in books_with_title]
         return {"Books": output}
 
-    @app.route('/DynamicSearchBookByTitle', methods=['GET'])
-    def handle_DynamicSearchBookByTitle():
-
-        data = request.headers
-        inputTitle = data['title']
-
-        search = "%{}%".format(inputTitle)
-        books_with_title = BookModel.query.filter(BookModel.title.ilike(search)).order_by(BookModel.title.asc()).all()
-
-        if not books_with_title:
-            return {"error": "No books with that title"}
-        output = [
-            {
-                'ISBN': book.ISBN,
-                'title': book.title,
-                'author': book.author
-            } for book in books_with_title]
-        return {"Books": output}
-
-
+    # Search Book where input is author
     @app.route('/SearchBookByAuthor', methods=['GET'])
     def handle_SearchBookByAuthor():
 
@@ -120,6 +102,51 @@ def bookish_routes(app):
             } for book in books_with_author]
         return {"Books": output}
 
+    # Search Book where input is substring of title or author
+    @app.route('/DynamicSearchBook', methods=['GET'])
+    def handle_DynamicSearchBook():
+
+        data = request.headers
+
+        if 'title' in data:
+
+            inputTitle = data['title']
+
+            search = "%{}%".format(inputTitle)
+            books_with_title = BookModel.query.filter(BookModel.title.ilike(search)).order_by(
+                BookModel.title.asc()).all()
+
+            if not books_with_title:
+                return {"error": "No books with that title"}
+            output = [
+                {
+                    'ISBN': book.ISBN,
+                    'title': book.title,
+                    'author': book.author
+                } for book in books_with_title]
+
+        elif 'author' in data:
+
+            inputAuthor = data['author']
+
+            search = "%{}%".format(inputAuthor)
+            books_with_author = BookModel.query.filter(BookModel.author.ilike(search)).order_by(
+                BookModel.title.asc()).all()
+
+            if not books_with_author:
+                return {"error": "No books with that author"}
+            output = [
+                {
+                    'ISBN': book.ISBN,
+                    'title': book.title,
+                    'author': book.author
+                } for book in books_with_author]
+
+        else:
+
+            return {"error": "you didn't input the title or author."}
+
+        return {"Books": output}
 
     @app.route('/BorrowBook', methods=['POST'])
     def handle_BorrowBook():
