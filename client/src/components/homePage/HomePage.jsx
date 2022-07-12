@@ -11,8 +11,8 @@ export class HomePage extends Component {
     return (
       <HomeDiv>
         <HomeTitleContainer>
-          <HomeTitleTag>Status:</HomeTitleTag>
-          <li>{this.props.okStatus}</li>
+          <HomeTitleTag>Bookish Library:</HomeTitleTag>
+
         </HomeTitleContainer>
       </HomeDiv>
     );

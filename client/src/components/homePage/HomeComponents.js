@@ -9,10 +9,10 @@ export const HomeDiv = styled.div`
 
 export const HomeTitleContainer = styled.div`
   display block;
-  height: 100px;
+  height: 45px;
   padding: 12px;
   margin:20px;
-  border-bottom: 3px solid #dddddd;
+  // border-bottom: 3px solid #dddddd;
 `;
 
 export const HomeTitleTag = styled.span`

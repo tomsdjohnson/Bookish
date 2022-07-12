@@ -27,6 +27,22 @@ export class ApiService {
         .catch((error) => console.error(error))
     );
   }
+
+    DynamicSearchBookByTitle(title) {
+        return new Promise((resolve) =>
+            fetch("/DynamicSearchBookByTitle", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "title": title
+                },
+
+            })
+                .then((response) => resolve(response.json()))
+                .catch((error) => console.error(error))
+        );
+    }
 }
 
 const checkResponse = (response) => {

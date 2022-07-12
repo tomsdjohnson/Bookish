@@ -68,45 +68,58 @@ def bookish_routes(app):
 
     @app.route('/SearchBookByTitle', methods=['GET'])
     def handle_SearchBookByTitle():
-        if request.is_json:
 
-            data = request.get_json()
-            inputTitle = data['title']
+        data = request.headers
+        inputTitle = data['title']
 
-            books_with_title = BookModel.query.where(BookModel.title == inputTitle).all()
-            if not books_with_title:
-                return {"error": "No books with that title"}
-            output = [
-                {
-                    'ISBN': book.ISBN,
-                    'title': book.title,
-                    'author': book.author
-                } for book in books_with_title]
-            return {"Books": output}
+        books_with_title = BookModel.query.where(BookModel.title == inputTitle).all()
+        if not books_with_title:
+            return {"error": "No books with that title"}
+        output = [
+            {
+                'ISBN': book.ISBN,
+                'title': book.title,
+                'author': book.author
+            } for book in books_with_title]
+        return {"Books": output}
 
-        else:
-            return {"error": "The request payload is not in JSON format"}
+    @app.route('/DynamicSearchBookByTitle', methods=['GET'])
+    def handle_DynamicSearchBookByTitle():
+
+        data = request.headers
+        inputTitle = data['title']
+
+        search = "%{}%".format(inputTitle)
+        books_with_title = BookModel.query.filter(BookModel.title.ilike(search)).order_by(BookModel.title.asc()).all()
+
+        if not books_with_title:
+            return {"error": "No books with that title"}
+        output = [
+            {
+                'ISBN': book.ISBN,
+                'title': book.title,
+                'author': book.author
+            } for book in books_with_title]
+        return {"Books": output}
+
 
     @app.route('/SearchBookByAuthor', methods=['GET'])
     def handle_SearchBookByAuthor():
-        if request.is_json:
 
-            data = request.get_json()
-            inputAuthor = data['author']
+        data = request.headers
+        inputAuthor = data['author']
 
-            books_with_author = BookModel.query.where(BookModel.author == inputAuthor).all()
-            if not books_with_author:
-                return {"error": "No books by that author"}
-            output = [
-                {
-                    'ISBN': book.ISBN,
-                    'title': book.title,
-                    'author': book.author
-                } for book in books_with_author]
-            return {"Books": output}
+        books_with_author = BookModel.query.where(BookModel.author == inputAuthor).all()
+        if not books_with_author:
+            return {"error": "No books by that author"}
+        output = [
+            {
+                'ISBN': book.ISBN,
+                'title': book.title,
+                'author': book.author
+            } for book in books_with_author]
+        return {"Books": output}
 
-        else:
-            return {"error": "The request payload is not in JSON format"}
 
     @app.route('/BorrowBook', methods=['POST'])
     def handle_BorrowBook():
@@ -196,83 +209,77 @@ def bookish_routes(app):
 
     @app.route('/AvailableBookCopies', methods=['GET'])
     def handle_AvailableBookCopies():
-        if request.is_json:
 
-            data = request.get_json()
-            inputISBN = data['ISBN']
+        data = request.headers
+        inputISBN = data['ISBN']
 
-            copies_with_ISBN = BookCopies.query.where(BookCopies.ISBN == inputISBN).all()
+        copies_with_ISBN = BookCopies.query.where(BookCopies.ISBN == inputISBN).all()
 
-            if not copies_with_ISBN:
-                return {"error": "Library does not have this book."}
+        if not copies_with_ISBN:
+            return {"error": "Library does not have this book."}
 
-            borrowed_copies_counter = 0
-            borrowed_copies = []
+        borrowed_copies_counter = 0
+        borrowed_copies = []
 
-            book_ids = [book.BookID for book in copies_with_ISBN]
+        book_ids = [book.BookID for book in copies_with_ISBN]
 
-            for book_id in book_ids:
-                book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
-                if book:
-                    borrowed_copies_counter += 1
-                    borrowed_copies.append(book[0])
+        for book_id in book_ids:
+            book = BorrowedBooks.query.where(BorrowedBooks.BookID == book_id).all()
+            if book:
+                borrowed_copies_counter += 1
+                borrowed_copies.append(book[0])
 
-            if len(borrowed_copies) == 0:
-                return {"message": "There are {} copies of the book and they're all available".format(len(copies_with_ISBN))}
-            else:
-                availableCopies = len(copies_with_ISBN) - borrowed_copies_counter
-                BorrowedBooksDetails = []
-
-                for copy in borrowed_copies:
-                    user = Users.query.where(Users.UserID == copy.UserID).all()
-
-                    BorrowedBooksDetails.append(
-                        {
-                            'username': user[0].username,
-                            'Due Date': copy.DueDate
-                        })
-
-                output_dict = {"Book Copies": len(copies_with_ISBN), "Available Copies": availableCopies, "Borrowed Book Details": BorrowedBooksDetails}
-                return output_dict
+        if len(borrowed_copies) == 0:
+            return {"message": "There are {} copies of the book and they're all available".format(len(copies_with_ISBN))}
         else:
-            return {"error": "The request payload is not in JSON format"}
+            availableCopies = len(copies_with_ISBN) - borrowed_copies_counter
+            BorrowedBooksDetails = []
+
+            for copy in borrowed_copies:
+                user = Users.query.where(Users.UserID == copy.UserID).all()
+
+                BorrowedBooksDetails.append(
+                    {
+                        'username': user[0].username,
+                        'Due Date': copy.DueDate
+                    })
+
+            output_dict = {"Book Copies": len(copies_with_ISBN), "Available Copies": availableCopies, "Borrowed Book Details": BorrowedBooksDetails}
+            return output_dict
 
     @app.route('/BooksBorrowedByUser', methods=['GET'])
     def handle_BooksBorrowedByUser():
-        if request.is_json:
 
-            data = request.get_json()
-            inputUsername = data['username']
+        data = request.headers
+        inputUsername = data['username']
 
-            users_with_username = Users.query.where(Users.username == inputUsername).all()
+        users_with_username = Users.query.where(Users.username == inputUsername).all()
 
-            if not users_with_username:
-                return {"error": "User does not exist."}
-            if len(users_with_username) > 1:
-                return {"error": "Multiple users by that username"}
+        if not users_with_username:
+            return {"error": "User does not exist."}
+        if len(users_with_username) > 1:
+            return {"error": "Multiple users by that username"}
 
-            UserID = users_with_username[0].UserID
-            BorrowedBooksByUserDetails = []
+        UserID = users_with_username[0].UserID
+        BorrowedBooksByUserDetails = []
 
-            borrowed_books = BorrowedBooks.query.where(BorrowedBooks.UserID == UserID).all()
+        borrowed_books = BorrowedBooks.query.where(BorrowedBooks.UserID == UserID).all()
 
-            for borrowed_book in borrowed_books:
-                BookID = borrowed_book.BookID
-                ISBN = BookCopies.query.where(BookCopies.BookID == BookID).all()[0].ISBN
-                title = BookModel.query.where(BookModel.ISBN == ISBN).all()[0].title
+        for borrowed_book in borrowed_books:
+            BookID = borrowed_book.BookID
+            ISBN = BookCopies.query.where(BookCopies.BookID == BookID).all()[0].ISBN
+            title = BookModel.query.where(BookModel.ISBN == ISBN).all()[0].title
 
-                BorrowedBooksByUserDetails.append(
-                    {
-                        'title': title,
-                        'Due Date': borrowed_book.DueDate
-                    })
+            BorrowedBooksByUserDetails.append(
+                {
+                    'title': title,
+                    'Due Date': borrowed_book.DueDate
+                })
 
-            if not borrowed_books:
-                return {"message": "User has not borrowed any books."}
-            else:
-                return {"Borrowed Books": BorrowedBooksByUserDetails}
+        if not borrowed_books:
+            return {"message": "User has not borrowed any books."}
         else:
-            return {"error": "The request payload is not in JSON format"}
+            return {"Borrowed Books": BorrowedBooksByUserDetails}
 
     @app.route('/EditBook', methods=['POST'])
     def handle_EditBook():
