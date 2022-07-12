@@ -79,6 +79,24 @@ export class ApiService {
         .catch((error) => console.error(error))
     );
   }
+
+  AddUser(username, password) {
+    return new Promise((resolve) =>
+      fetch("/NewUser", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({
+            "username": username,
+            "password": password
+        }),
+      })
+        .then((response) => resolve(response.json()))
+        .catch((error) => console.error(error))
+    );
+  }
 }
 
 const checkResponse = (response) => {

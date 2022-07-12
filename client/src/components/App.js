@@ -9,6 +9,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import SearchBooksTab from "./SearchBookTab";
 import AddBooksTab from "./AddBookTab";
+import AddUserTab from "./AddUserTab";
 
 
 export default function App() {
@@ -56,6 +57,7 @@ export default function App() {
             </TabPanel>
 
             <TabPanel>
+              <AddUserTab />
             </TabPanel>
 
             <TabPanel>
