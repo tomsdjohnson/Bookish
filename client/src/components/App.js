@@ -10,6 +10,7 @@ import 'react-tabs/style/react-tabs.css';
 import SearchBooksTab from "./SearchBookTab";
 import AddBooksTab from "./AddBookTab";
 import AddUserTab from "./AddUserTab";
+import BorrowBookTab from "./BorrowBookTab";
 
 
 export default function App() {
@@ -61,6 +62,7 @@ export default function App() {
             </TabPanel>
 
             <TabPanel>
+              <BorrowBookTab/>
             </TabPanel>
           </Tabs>
 

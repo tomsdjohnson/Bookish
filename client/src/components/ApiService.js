@@ -97,6 +97,25 @@ export class ApiService {
         .catch((error) => console.error(error))
     );
   }
+
+  BorrowBook(username, ISBN, DueDate) {
+    return new Promise((resolve) =>
+      fetch("/BorrowBook", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({
+            "username": username,
+            "ISBN": ISBN,
+            "DueDate": DueDate
+        }),
+      })
+        .then((response) => resolve(response.json()))
+        .catch((error) => console.error(error))
+    );
+  }
 }
 
 const checkResponse = (response) => {
